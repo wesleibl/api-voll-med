@@ -1,6 +1,8 @@
 package med.voll.api.medico;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -14,6 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -38,6 +41,9 @@ public class MedicoControllerTest {
                 """;
     @Autowired
     private MedicoRepository repository;
+
+    @Autowired
+    private EntityManager em;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -88,5 +94,22 @@ public class MedicoControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(medicoSalvo.getId()))
                 .andExpect(jsonPath("$.nome").value(novoNome));
+    }
+
+    @Test
+    @Transactional
+    void deveExcluirMedico() throws Exception{
+        var dados = objectMapper.readValue(NOVOMEDICO, DadosCadastroMedico.class);
+        var medicoSalvo = repository.save(new Medico(dados));
+
+        mockMvc.perform(delete("/medicos/"+ medicoSalvo.getId()))
+                .andExpect(status().isNoContent());
+
+        em.flush();
+        em.clear();
+
+        var medicoNoBanco = repository.getReferenceById(medicoSalvo.getId());
+
+        Assertions.assertFalse(medicoNoBanco.getAtivo());
     }
 }
