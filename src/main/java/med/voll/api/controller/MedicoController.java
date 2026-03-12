@@ -11,8 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("medicos")
 public class MedicoController {
@@ -22,13 +20,13 @@ public class MedicoController {
 
     @PostMapping
     @Transactional
-    public ResponseEntity<DadosPosCadastro> cadastrar(@RequestBody @Valid DadosCadastroMedico dados,UriComponentsBuilder uriBuilder) {
+    public ResponseEntity<DadosDetalheMedico> cadastrar(@RequestBody @Valid DadosCadastroMedico dados,UriComponentsBuilder uriBuilder) {
         var medico = new Medico(dados);
         repository.save(medico);
 
         var uri = uriBuilder.path("/medicos/{id}").buildAndExpand(medico.getId()).toUri();
 
-        return ResponseEntity.created(uri).body(new DadosPosCadastro(medico));
+        return ResponseEntity.created(uri).body(new DadosDetalheMedico(medico));
     }
 
     @GetMapping
@@ -38,15 +36,20 @@ public class MedicoController {
 
     @PutMapping
     @Transactional
-    public void atualizar(@RequestBody @Valid DadosAtualizarMedico dados){
+    public ResponseEntity<DadosDetalheMedico> atualizar(@RequestBody @Valid DadosAtualizarMedico dados, UriComponentsBuilder uriBuilder){
         var medico = repository.getReferenceById(dados.id());
         medico.atualizarInformacoes(dados);
+
+        var uri = uriBuilder.path("/medicos/{id}").buildAndExpand(medico.getId()).toUri();
+        return ResponseEntity.created(uri).body(new DadosDetalheMedico(medico));
     }
 
     @DeleteMapping("/{id}")
     @Transactional
-    public void excluir(@PathVariable Long id){
+    public ResponseEntity<Void> excluir(@PathVariable Long id){
         var medico = repository.getReferenceById(id);
         medico.excluir();
+
+        return ResponseEntity.noContent().build();
     }
 }
