@@ -1,6 +1,6 @@
 package med.voll.api.medico;
 
-import med.voll.api.endereco.DadosEndereco;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -13,43 +13,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 public class MedicoControllerTest {
 
-    @Autowired
-    private MedicoRepository repository;
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    private DadosEndereco dadosEndereco() {
-        return new DadosEndereco(
-                "rua xpto",
-                "bairro",
-                "00000000",
-                "Brasilia",
-                "DF",
-                null
-        );
-    }
-
-    @Test
-    @Transactional
-    void deveRetornarMedicos() throws Exception {
-        var dados = new DadosCadastroMedico("João", "joao@voll.med", "123456",Especialidade.ORTOPEDIA, this.dadosEndereco(), "59995293322");
-        repository.save(new Medico(dados));
-
-        mockMvc.perform(get("/medicos"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].nome").value("João"));
-    }
-
-    @Test
-    @Transactional
-    void cadastrarMedico() throws Exception {
-        var jsonInput = """
+    private static final String NOVOMEDICO = """
                 {
                     "nome": "Medico Teste",
                     "email": "medico@teste.com",
@@ -62,17 +32,61 @@ public class MedicoControllerTest {
                         "cep": "00000000",
                         "cidade": "brasilia",
                         "uf": "DF",
-                        "numero": "1",
                         "complemento": "apto"
                     }
                 }
                 """;
+    @Autowired
+    private MedicoRepository repository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    @Transactional
+    void deveRetornarMedicos() throws Exception {
+        var dados = objectMapper.readValue(NOVOMEDICO, DadosCadastroMedico.class);
+
+        repository.save(new Medico(dados));
+
+        mockMvc.perform(get("/medicos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].nome").value("Medico Teste"));
+    }
+
+    @Test
+    @Transactional
+    void deveRetornarIdENome() throws Exception {
         mockMvc.perform(post("/medicos")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonInput))
+                .content(NOVOMEDICO))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.nome").value("Medico Teste"));
+    }
+
+    @Test
+    @Transactional
+    void deveAtualizarMedico() throws Exception {
+        var dados = objectMapper.readValue(NOVOMEDICO, DadosCadastroMedico.class);
+        var medicoSalvo = repository.save(new Medico(dados));
+
+        String novoNome = "Nome Atualizado e Correto";
+        var jsonUpdate = """
+                {
+                    "id": %d,
+                    "nome": "%s"
+                }
+                """.formatted(medicoSalvo.getId(), novoNome);
+
+        mockMvc.perform(put("/medicos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonUpdate))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(medicoSalvo.getId()))
+                .andExpect(jsonPath("$.nome").value(novoNome));
     }
 }

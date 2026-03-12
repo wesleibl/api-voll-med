@@ -36,12 +36,11 @@ public class MedicoController {
 
     @PutMapping
     @Transactional
-    public ResponseEntity<DadosDetalheMedico> atualizar(@RequestBody @Valid DadosAtualizarMedico dados, UriComponentsBuilder uriBuilder){
+    public ResponseEntity<DadosDetalheMedico> atualizar(@RequestBody @Valid DadosAtualizarMedico dados){
         var medico = repository.getReferenceById(dados.id());
         medico.atualizarInformacoes(dados);
 
-        var uri = uriBuilder.path("/medicos/{id}").buildAndExpand(medico.getId()).toUri();
-        return ResponseEntity.created(uri).body(new DadosDetalheMedico(medico));
+        return ResponseEntity.ok(new DadosDetalheMedico(medico));
     }
 
     @DeleteMapping("/{id}")
